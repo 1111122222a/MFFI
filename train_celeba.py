@@ -20,10 +20,10 @@ import math
 def compute_topx_acc(cnn_model,attribute_model,sam,testset,test_loader):
 
     test_labels_list       = []
-    classify_scores_list   = []
+    i2a_scores_list   = []
     test_binary_atts_list  = []
     test_predict_atts_list = []
-    retrieval_scores_list  = []
+    a2i_scores_list  = []
     cnn_model.eval()
     attribute_model.eval()
     sam.eval()
@@ -50,40 +50,40 @@ def compute_topx_acc(cnn_model,attribute_model,sam,testset,test_loader):
             # third, we compute the similarity
             cnn_output           = F.normalize(cnn_output, p=2, dim=1)
             cnn_output_T         = torch.transpose(cnn_output, 1, 0)  # 512 * N_samples
-            classify_scores      = torch.matmul(cnn_output, attribute_network_output_T)  # N_samples * N_identiy
-            retrieval_scores     = torch.matmul(attribute_network_output, cnn_output_T)  # N_identity * N_samples
-            classify_scores      = classify_scores.cpu().detach().numpy()
-            retrieval_scores     = retrieval_scores.cpu().detach().numpy()
-            classify_scores_list.append(classify_scores)
-            retrieval_scores_list.append(retrieval_scores)
+            i2a_scores      = torch.matmul(cnn_output, attribute_network_output_T)  # N_samples * N_identiy
+            a2i_scores     = torch.matmul(attribute_network_output, cnn_output_T)  # N_identity * N_samples
+            i2a_scores      = i2a_scores.cpu().detach().numpy()
+            a2i_scores     = a2i_scores.cpu().detach().numpy()
+            i2a_scores_list.append(i2a_scores)
+            a2i_scores_list.append(a2i_scores)
         print('finish feature')
     test_labels      = np.hstack(test_labels_list)  # N_samples
-    classify_scores  = np.vstack(classify_scores_list)  # N_samples * N_identiy
-    retrieval_scores = np.hstack(retrieval_scores_list)
+    i2a_scores  = np.vstack(i2a_scores_list)  # N_samples * N_identiy
+    a2i_scores = np.hstack(a2i_scores_list)
 
-    # we compute classification acc、retrieval acc and attribute classify acc respectively
+    # we compute classification acc、a2i acc and attribute i2a acc respectively
     # First we compute classification acc
     test_binary_atts = np.vstack(test_binary_atts_list)
     test_predict_atts = np.vstack(test_predict_atts_list)
-    att_classify_average_acc, att_classify_per_acc = get_att_classify_acc(pred_atts=test_predict_atts,
+    att_classify_average_acc = get_att_classify_acc(pred_atts=test_predict_atts,
                                                                           true_atts=test_binary_atts)
-    label_idx     = np.argsort(-classify_scores, axis=1)[:, :10]
+    label_idx     = np.argsort(-i2a_scores, axis=1)[:, :10]
     unique_labels = testset.test_unique_labels
     pred_labels   = np.take(unique_labels, label_idx)
-    classify_average_acc = get_classify_topx_acc(y_true=test_labels, y_pred=pred_labels)
-    # Second we compute retrieval acc
+    i2a_average_acc = get_i2a_topx_acc(y_true=test_labels, y_pred=pred_labels)
+    # Second we compute a2i acc
 
-    label_idx     = np.argsort(-retrieval_scores, axis=1)[:, :10]
+    label_idx     = np.argsort(-a2i_scores, axis=1)[:, :10]
     unique_labels = test_labels
     pred_labels   = np.take(unique_labels, label_idx)
-    retrieval_average_acc, retrieval_per_acc,top_x_same_or_not = get_retrieval_topx_acc(y_true=testset.test_unique_labels,y_pred=pred_labels)
+    a2i_average_acc = get_a2i_topx_acc(y_true=testset.test_unique_labels,y_pred=pred_labels)
 
-    return classify_average_acc, retrieval_average_acc,att_classify_average_acc
+    return i2a_average_acc, a2i_average_acc,att_classify_average_acc
 
 
-def get_retrieval_topx_acc(y_true,y_pred):
+def get_a2i_topx_acc(y_true,y_pred):
     '''
-    We compute retrieval acc
+    We compute a2i acc
     :param y_true:
     :param y_pred:
     :return:
@@ -118,7 +118,7 @@ def get_retrieval_topx_acc(y_true,y_pred):
 
     return average_acc
 
-def get_classify_topx_acc(y_true,y_pred):
+def get_i2a_topx_acc(y_true,y_pred):
     '''
     We use this function to compute top-x acc.
     :param y_true:
@@ -180,7 +180,7 @@ def get_att_classify_acc(pred_atts,true_atts):
     average = np.average(per_acc)
 
 
-    return average,per_acc
+    return average
 
 def main(parser):
 
@@ -233,8 +233,8 @@ def main(parser):
     loss_list                           = []
     dcm_loss_list                        = []
     cea_loss_list                       = []
-    test_classify_average_acc_list      = []
-    test_retrieval_average_acc_list     = []
+    test_i2a_average_acc_list      = []
+    test_a2i_average_acc_list     = []
     test_att_classify_average_acc_list  = []
     iter_list    = []
     for epoch in tqdm(range(EPOCHS)):
@@ -309,25 +309,25 @@ def main(parser):
         print('Spend {:.2f} minutes to complete one epoch '.format(epoch_spend_time))
         print('#############')
         print('Testing ...')
-        test_classify_average_acc, test_retrieval_average_acc,\
+        test_i2a_average_acc, test_a2i_average_acc,\
         test_att_classify_average_acc = compute_topx_acc(cnn_model=cnn_model,
                                                                           attribute_model=attribute_model,
                                                                           sam=sam, test_loader=test_loader,
                                                                           testset=testset, )
 
-        test_classify_average_acc_list.append(test_classify_average_acc)
-        test_retrieval_average_acc_list.append(test_retrieval_average_acc)
+        test_i2a_average_acc_list.append(test_i2a_average_acc)
+        test_a2i_average_acc_list.append(test_a2i_average_acc)
         test_att_classify_average_acc_list.append(test_att_classify_average_acc)
 
 
         for q, top_number in enumerate(opt.top_x):
 
             print('Testset Imgae to Attribute top-{} average class accuracy:{:.2f}'.format(top_number,
-                                                                                 test_classify_average_acc[q]))
+                                                                                 test_i2a_average_acc[q]))
         print('\n')
         for q, top_number in enumerate(opt.top_x):
             print('Testset Attribute to Image top-{} average class accuracy:{:.2f}'.format(top_number,
-                                                                                  test_retrieval_average_acc[q]))
+                                                                                  test_a2i_average_acc[q]))
         print('Testset att classify acc is {:.2f}'.format(test_att_classify_average_acc))
 
 
@@ -361,16 +361,16 @@ def main(parser):
         dcm_loss_arr  = np.array(dcm_loss_list)
         cea_loss_arr = np.array(cea_loss_list)
         iter_arr     = np.array(iter_list)
-        test_classify_average_acc_arr      = np.array(test_classify_average_acc_list)
-        test_retrieval_average_acc_arr     = np.array(test_retrieval_average_acc_list)
+        test_i2a_average_acc_arr      = np.array(test_i2a_average_acc_list)
+        test_a2i_average_acc_arr     = np.array(test_a2i_average_acc_list)
         test_att_classify_average_acc_arr  = np.array(test_att_classify_average_acc_list)
 
         results_name = basemodel_dir + '/'+'Top_' + str(N_ATT)+'_spatial_results.mat'
         scio.savemat(results_name, {'top-number': np.array(opt.top_x),
                                                                   'loss': loss_arr,'dcm_loss': dcm_loss_arr,'cea_loss': cea_loss_arr,
                                                                   'iter': iter_arr,
-                                                                  'test_classify_average_acc': test_classify_average_acc_arr,
-                                                                  'test_retrieval_average_acc': test_retrieval_average_acc_arr,
+                                                                  'test_i2a_average_acc': test_i2a_average_acc_arr,
+                                                                  'test_a2i_average_acc': test_a2i_average_acc_arr,
                                                                   'test_att_classify_average_acc': test_att_classify_average_acc_arr,
                                                                   'drop_ratio': opt.drop_ratio,
                                                                   'weight_decay': opt.weight_decay,
@@ -408,8 +408,8 @@ if __name__ == '__main__':
     parser.add_argument('--margin',               type=float, default=0.1,           help='margin of training model')
     parser.add_argument('--d',                    type=float, default=32,            help='scale of training model')
     parser.add_argument('--n_att',                type=float, default=10, help='top-D att')
-    parser.add_argument('--resnet_path',          type=str,   default='./pretrain/resnet/model_ir_se50.pth', help='pretrain resnet model')
-    parser.add_argument('--basemodel_dir',        type=str,   default='./results/basemodel/spatial_model_celeba',help='root dir of saving model')
+    parser.add_argument('--resnet_path',          type=str,   default='./results/resnet/model_ir_se50.pth', help='pretrain resnet model')
+    parser.add_argument('--basemodel_dir',        type=str,   default='./results/basemodel/spatial_model_2',help='root dir of saving model')
     parser.add_argument('--cnn_model_dir', type=str, default='cnn_model', help='root dir of cnn model')
     parser.add_argument('--att_model_dir', type=str, default='att_model', help='root dir of attribute model')
     parser.add_argument('--sam_model_dir', type=str, default='sam_model', help='root dir of spatial attention model')
