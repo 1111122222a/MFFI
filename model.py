@@ -127,4 +127,4 @@ class SAM(nn.Module):
         out_feas     = fea_maps.view(fea_maps.size(0), fea_maps.size(1), -1 )# BATCH * C * [H *W]
         out_feas     = torch.mean(out_feas, dim=2)
         out_feas     = self.bn4(out_feas)
-        return predict_att,out_feas,fea_maps
+        return predict_att,out_feas,fea_maps 
