@@ -9,7 +9,7 @@ This project contains the officail code of our Modality-free Face Identification
 - Download the [CelabA](http://mmlab.ie.cuhk.edu.hk/projects/CelebA.html) and LFWA (https://drive.google.com/drive/u/0/folders/0B7EVK8r0v71pQ3NzdzRhVUhSams)
 - Please put dataset in folder './dataset/CelebA/' and './dataset/LFWA/' respectively.
 - We have upload the split index of probe and gallery set of celebA, and the split index of
-train and test set of LFWA.
+training and test set of LFWA.
 
 3. Pretrained model
 
@@ -24,5 +24,6 @@ train and test set of LFWA.
 - model.py contains three modules. CNN, Attribute_Network, DCM_Logit and SAM
 - train_celeba.py is the main python file of image to attribute and attribute to image on CelebA dataset, please run this file.
 - train_lfwa.py is the main python file of image to attribute and attribute to image on LFWA dataset, please run this file.
+- train_celeba.py is the main python file of image to image on CelebA dataset, please run this file.
 
 The results will be save into folder './results'.
