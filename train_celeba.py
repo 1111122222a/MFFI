@@ -10,9 +10,6 @@ import torch.nn as nn
 from tqdm import tqdm
 from model import CNN,DCM_Logit,SAM,AttributeNetwork
 import numpy as np
-from resnet import Backbone
-import gc
-
 import argparse
 from datetime import datetime
 import torch.nn.functional as F
@@ -39,7 +36,7 @@ def compute_topx_acc(cnn_model,attribute_model,sam,testset,test_loader):
         attribute_network_output   = F.normalize(attribute_network_output, p=2, dim=1)  # N_identity * 512
         attribute_network_output_T = torch.transpose(attribute_network_output, 1, 0)  # 512 * N_identity
 
-        for batch_imgs,batch_atts,batch_binary_atts,batch_labels,batch_false_att,batch_cosine_labels in test_loader:
+        for batch_imgs,batch_atts,batch_binary_atts,batch_labels in test_loader:
             # sceond  we get a batch feature vectors
             batch_labels         = batch_labels.numpy()
             test_labels_list.append(batch_labels)
@@ -73,7 +70,7 @@ def compute_topx_acc(cnn_model,attribute_model,sam,testset,test_loader):
     label_idx     = np.argsort(-classify_scores, axis=1)[:, :10]
     unique_labels = testset.test_unique_labels
     pred_labels   = np.take(unique_labels, label_idx)
-    classify_average_acc, classify_per_acc = get_classify_topx_acc(y_true=test_labels, y_pred=pred_labels)
+    classify_average_acc = get_classify_topx_acc(y_true=test_labels, y_pred=pred_labels)
     # Second we compute retrieval acc
 
     label_idx     = np.argsort(-retrieval_scores, axis=1)[:, :10]
@@ -204,9 +201,9 @@ def main(parser):
         transforms.Resize(opt.SIZE_TEST),
         transforms.ToTensor(),
         transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])])
-    trainset         = CelebA(opt, transform=transform_train)
+    trainset         = CelebA(opt, transform=transform_train,tag=opt.tag,pg_tag=opt.pg_tag)
     train_loader     = DataLoader(dataset=trainset, batch_size=BATCHSIZE, num_workers=8, pin_memory=True, )
-    testset          = CelebA(opt, transform=transform_test, setting='test')
+    testset          = CelebA(opt, transform=transform_test, setting='test',tag=opt.tag,pg_tag=opt.pg_tag)
     test_loader      = DataLoader(dataset=testset, batch_size=BATCHSIZE, num_workers=8, pin_memory=True, )
     n_train = len(trainset)
 
@@ -215,7 +212,7 @@ def main(parser):
     cnn_model         = CNN(num_layers=opt.net_depth, drop_ratio=opt.drop_ratio, mode=opt.net_mode, resnet_path=resnet_path)
     attribute_model   = AttributeNetwork(40, 256, 512)
     sam               = SAM(input_size=512, output_size=40,n_att=N_ATT)
-    arcmargin_compute = DCM_Logit(s=opt.scale,m=opt.margin)
+    arcmargin_compute = DCM_Logit(d=opt.d,m=opt.margin)
     cnn_model.cuda()
     attribute_model.cuda()
     sam.cuda()
@@ -269,7 +266,7 @@ def main(parser):
             CEA         = nn.BCELoss().cuda()
             DCM         = nn.CrossEntropyLoss().cuda()
             cea_loss    = CEA(input=pred_atts,target=batch_binary_atts) * 15
-            dcm_loss    = DCM(input=output, target=target)
+            dcm_loss    = DCM.forward(input=output, target=target)
 
             loss       = cea_loss+dcm_loss
             # update
@@ -324,11 +321,12 @@ def main(parser):
 
 
         for q, top_number in enumerate(opt.top_x):
-            print('Testset Classify top-{} average class accuracy:{:.2f}'.format(top_number,
+
+            print('Testset Imgae to Attribute top-{} average class accuracy:{:.2f}'.format(top_number,
                                                                                  test_classify_average_acc[q]))
         print('\n')
         for q, top_number in enumerate(opt.top_x):
-            print('Testset Retrieval top-{} average class accuracy:{:.2f}'.format(top_number,
+            print('Testset Attribute to Image top-{} average class accuracy:{:.2f}'.format(top_number,
                                                                                   test_retrieval_average_acc[q]))
         print('Testset att classify acc is {:.2f}'.format(test_att_classify_average_acc))
 
@@ -386,13 +384,16 @@ def main(parser):
                                                                   })
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--root_dir',             default='./data/CelebA',          help='path to dataset')
+    parser.add_argument('--root_dir',             default='../data/CelebA',          help='path to dataset')
     parser.add_argument('--img_dir',              default='img_align_celeba',        help='path to image')
     parser.add_argument('--Anno_dir',             default='Anno',                    help='path to Anno')
     parser.add_argument('--split_dir',            default='Eval',                    help='path to spilt')
+    parser.add_argument('--pg_idx_dir',           default='pg_idx',                    help='path to spilt')
     parser.add_argument('--att_filename',         default='list_attr_celeba.txt',    help='name of attribute file')
     parser.add_argument('--label_filename',       default='identity_CelebA.txt',     help='name of identity name')
     parser.add_argument('--split_filename',       default='list_eval_partition.txt', help='name of split file')
+    parser.add_argument('--tag',                  default=None, help='whether build probe or gallery set or not')
+    parser.add_argument('--pg_tag',               default='probe', help='probe or gallery set')
     parser.add_argument('--batch_size',           type=int,   default=128,           help='input batch size')
     parser.add_argument('--lr_sam',               type=int,   default=0.00005,       help='the number of choice samples')
     parser.add_argument('--lr_cnn',               type=float, default=0.00005,       help='learning rate to train model')
@@ -406,7 +407,8 @@ if __name__ == '__main__':
     parser.add_argument('--epochs',               type=int,   default=20,            help='epoch of training model')
     parser.add_argument('--margin',               type=float, default=0.1,           help='margin of training model')
     parser.add_argument('--d',                    type=float, default=32,            help='scale of training model')
-    parser.add_argument('--resnet_path',          type=str,   default='./pretrain/model_ir_se50.pth', help='pretrain resnet model')
+    parser.add_argument('--n_att',                type=float, default=10, help='top-D att')
+    parser.add_argument('--resnet_path',          type=str,   default='../Baseline4/results/resnet/model_ir_se50.pth', help='pretrain resnet model')
     parser.add_argument('--basemodel_dir',        type=str,   default='./results/basemodel/spatial_model_2',help='root dir of saving model')
     parser.add_argument('--cnn_model_dir', type=str, default='cnn_model', help='root dir of cnn model')
     parser.add_argument('--att_model_dir', type=str, default='att_model', help='root dir of attribute model')

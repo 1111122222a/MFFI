@@ -1,4 +1,4 @@
-from torch.utils.data import Dataset, D
+from torch.utils.data import Dataset
 import numpy as np
 import os
 import PIL
@@ -194,7 +194,7 @@ class LFWA(Dataset):
         return img_att_label_list
 
 class CelebA(Dataset):
-    def __init__(self, opt, transform=None, setting='trainval',tag='probe'):
+    def __init__(self, opt, transform=None, setting='trainval',tag=None,pg_tag='probe'):
         '''
 
         :param filename: txt file contains img names and labels
@@ -206,7 +206,7 @@ class CelebA(Dataset):
         '''
         self.opt                       = opt
         self.probe_gallery_idx_dir = opt.root_dir + '/' + opt.pg_idx_dir
-        self.img_att_label_list        = self.read_file(setting,tag=tag)
+        self.img_att_label_list        = self.read_file(setting,tag=tag,pg_tag=pg_tag)
         self.index                     = np.arange(len(self.img_att_label_list))
         self.setting                   = setting
         self.transform                 = transform
@@ -217,21 +217,14 @@ class CelebA(Dataset):
         img_name,att,binary_att,label = self.img_att_label_list[idx]
         img_path           = os.path.join(self.opt.root_dir+'/'+self.opt.img_dir+'/'+img_name)
         img                = self.load_data(img_path)
-        tag                = np.random.normal(0.5,0.1,size=1)
-        if tag>0.5:
-            cosine_label = 0
-        else:
-            cosine_label = 1
-            false_att = binary_att
         if self.transform is not None:
             img = self.transform(img)
         label             = np.array(label,dtype=int)
         att               = np.array(att,dtype=float)
-        false_att         = np.array(false_att,dtype=float)
         binary_att        = np.array(binary_att,dtype=int)
         if ((index == len(self.img_att_label_list)-1)) and (self.setting != 'test'):
             np.random.shuffle(self.index)
-        return img, att,binary_att, label,false_att,cosine_label
+        return img, att,binary_att, label
 
     def __len__(self):
 
@@ -280,7 +273,6 @@ class CelebA(Dataset):
         all_labels    = []
         all_img_names = []
         all_att_vecs  = []
-        all_false_vecs = []
         all_img_att_label_list = []
         for i in range(len(att_lines)):
             att_line     = att_lines[i]
@@ -297,12 +289,10 @@ class CelebA(Dataset):
             content = label_line.split(' ')
             name    = content[0]
             label   = int(content[1])-1
-            false_vecs = np.random.randint(0,2,size=len(att))
-            all_false_vecs.append(false_vecs)
             all_labels.append(label)
             all_img_names.append(name)
             all_att_vecs.append(att)
-            all_img_att_label_list.append((name, att, label,false_vecs,))
+            all_img_att_label_list.append((name, att, label))
 
         all_att_vecs  = np.array(all_att_vecs)
         all_labels    = np.array(all_labels)
@@ -334,11 +324,10 @@ class CelebA(Dataset):
             img_name   = all_img_att_label_list[i][0]
             binary_att = all_img_att_label_list[i][1]
             label      = all_img_att_label_list[i][2]
-            false_vecs = all_img_att_label_list[i][3]
             att        = list(self.class_embeddings[label,:])
             labels.append(label)
             att_vecs.append(att)
-            img_att_label_list.append((img_name,att,binary_att,label,false_vecs))
+            img_att_label_list.append((img_name,att,binary_att,label))
 
         if setting == 'test':
             test_labels = np.array(labels)
@@ -365,18 +354,18 @@ class CelebA(Dataset):
                     mat = scio.loadmat(self.probe_gallery_idx_dir+'/'+'pg_idx.mat')
                     probe_idx   = mat['probe_idx'].squeeze()
                     gallery_idx = mat['gallery_idx'].squeeze()
-            if pg_tag == 'probe':
-                probe_image_att_label_list = []
-                for idx in probe_idx:
-                    probe_image_att_label_list.append(img_att_label_list[idx])
-                img_att_label_list = probe_image_att_label_list
-            else:
-                gallery_image_att_label_list = []
-                for idx in gallery_idx:
-                    gallery_image_att_label_list.append(img_att_label_list[idx])
-                img_att_label_list = gallery_image_att_label_list
+                if pg_tag == 'probe':
+                    probe_image_att_label_list = []
+                    for idx in probe_idx:
+                        probe_image_att_label_list.append(img_att_label_list[idx])
+                    img_att_label_list = probe_image_att_label_list
+                else:
+                    gallery_image_att_label_list = []
+                    for idx in gallery_idx:
+                        gallery_image_att_label_list.append(img_att_label_list[idx])
+                    img_att_label_list = gallery_image_att_label_list
 
-        if (setting == 'trainval') or (setting == 'train'):
+        elif (setting == 'trainval') or (setting == 'train'):
             train_labels                = np.array(labels)
             self.train_unique_labels    = np.unique(train_labels)
             self.train_class_embeddings = self.class_embeddings[self.train_unique_labels]
