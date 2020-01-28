@@ -203,7 +203,7 @@ def main(parser):
         transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])])
     trainset         = LFWA(opt, transform=transform_train)
     train_loader     = DataLoader(dataset=trainset, batch_size=BATCHSIZE, num_workers=8, pin_memory=True, )
-    testset          = LFWA(opt, transform=transform_test)
+    testset          = LFWA(opt, transform=transform_test,setting='test')
     test_loader      = DataLoader(dataset=testset, batch_size=BATCHSIZE, num_workers=8, pin_memory=True, )
     n_train = len(trainset)
 
