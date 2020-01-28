@@ -76,7 +76,7 @@ def compute_topx_acc(cnn_model,attribute_model,sam,testset,test_loader):
     label_idx     = np.argsort(-a2i_scores, axis=1)[:, :10]
     unique_labels = test_labels
     pred_labels   = np.take(unique_labels, label_idx)
-    a2i_average_acc, = get_a2i_topx_acc(y_true=testset.test_unique_labels,y_pred=pred_labels)
+    a2i_average_acc = get_a2i_topx_acc(y_true=testset.test_unique_labels,y_pred=pred_labels)
 
     return i2a_average_acc, a2i_average_acc,att_classify_average_acc
 
