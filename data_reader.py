@@ -8,7 +8,7 @@ from sklearn.preprocessing import normalize
 
 
 class LFWA(Dataset):
-    def __init__(self, opt, transform=None, setting='trainval',tag=None,pg_tag='probe'):
+    def __init__(self, opt, transform=None, setting='trainval'):
         '''
 
         :param filename: txt file contains img names and labels
@@ -21,7 +21,7 @@ class LFWA(Dataset):
         self.opt                       = opt
         self.probe_gallery_idx_dir     = opt.root_dir + '/' + opt.pg_idx_dir
         self.split_file_dir            = opt.root_dir + '/' + opt.split_file_dir
-        self.img_att_label_list        = self.read_file(setting,tag=tag,pg_tag=pg_tag)
+        self.img_att_label_list        = self.read_file(setting)
         self.index                     = np.arange(len(self.img_att_label_list))
         self.setting                   = setting
         self.transform                 = transform
@@ -35,8 +35,6 @@ class LFWA(Dataset):
         if self.transform is not None:
             img = self.transform(img)
         label             = np.array(label,dtype=int)
-        # att               = np.array(att,dtype=float)
-        # binary_att        = np.array(binary_att,dtype=int)
         if ((index == len(self.img_att_label_list)-1)) and (self.setting != 'test'):
             np.random.shuffle(self.index)
         return img, att,binary_att, label
@@ -62,7 +60,7 @@ class LFWA(Dataset):
             return img
 
 
-    def read_file(self,setting,tag,pg_tag):
+    def read_file(self,setting):
 
 
         person_names = os.listdir(self.opt.root_dir+'/'+self.opt.img_dir)
@@ -154,39 +152,7 @@ class LFWA(Dataset):
             test_labels = np.array(labels)
             self.test_unique_labels = np.unique(test_labels)
             self.test_class_embeddings = self.class_embeddings[self.test_unique_labels]
-            if tag != None:
-                if not os.path.exists(self.probe_gallery_idx_dir):
-                    os.makedirs(self.probe_gallery_idx_dir)
-                    probe_idx_list = []
-                    gallery_idx_list = []
-                    for l in self.test_unique_labels:
-                        idx        =  np.where(test_labels==l)[0]
-                        n_idx      = idx.shape[0]
-                        n_probe    = int(n_idx*0.8)
-                        np.random.shuffle(idx)
-                        probe_idx_list.append(idx[:n_probe])
-                        gallery_idx_list.append(idx[n_probe:])
-
-                    probe_idx   = np.hstack(probe_idx_list)
-                    gallery_idx = np.hstack(gallery_idx_list)
-                    scio.savemat(self.probe_gallery_idx_dir+'/'+'pg_idx.mat',{'probe_idx':probe_idx,'gallery_idx':gallery_idx})
-                else:
-                    mat = scio.loadmat(self.probe_gallery_idx_dir+'/'+'pg_idx.mat')
-                    probe_idx = mat['probe_idx'].squeeze()
-                    gallery_idx = mat['gallery_idx'].squeeze()
-
-                if pg_tag == 'probe':
-                    probe_image_att_label_list = []
-                    for idx in probe_idx:
-                        probe_image_att_label_list.append(img_att_label_list[idx])
-                    img_att_label_list = probe_image_att_label_list
-                else:
-                    gallery_image_att_label_list = []
-                    for idx in gallery_idx:
-                        gallery_image_att_label_list.append(img_att_label_list[idx])
-                    img_att_label_list = gallery_image_att_label_list
-
-        if (setting == 'trainval') or (setting == 'train'):
+        elif (setting == 'trainval') or (setting == 'train'):
             train_labels = np.array(labels)
             self.train_unique_labels    = np.unique(train_labels)
             self.train_class_embeddings = self.class_embeddings[self.train_unique_labels]
@@ -371,6 +337,3 @@ class CelebA(Dataset):
             self.train_class_embeddings = self.class_embeddings[self.train_unique_labels]
 
         return img_att_label_list
-
-
-
