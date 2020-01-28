@@ -19,7 +19,6 @@ class LFWA(Dataset):
 
         '''
         self.opt                       = opt
-        self.probe_gallery_idx_dir     = opt.root_dir + '/' + opt.pg_idx_dir
         self.split_file_dir            = opt.root_dir + '/' + opt.split_file_dir
         self.img_att_label_list        = self.read_file(setting)
         self.index                     = np.arange(len(self.img_att_label_list))
@@ -337,3 +336,6 @@ class CelebA(Dataset):
             self.train_class_embeddings = self.class_embeddings[self.train_unique_labels]
 
         return img_att_label_list
+
+
+
