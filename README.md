@@ -22,6 +22,7 @@ train and test set of LFWA.
 - datareader.py contains Celeba and LFWA dataset classes.
 - resnet.py contains the architecture of ir-se50
 - model.py contains three modules. CNN, Attribute_Network, DCM_Logit and SAM
-- train.py is the main python file, please run this file.
+- train_celeba.py is the main python file of image to attribute and attribute to image on CelebA dataset, please run this file.
+- train_lfwa.py is the main python file of image to attribute and attribute to image on LFWA dataset, please run this file.
 
 The results will be save into folder './results'.
