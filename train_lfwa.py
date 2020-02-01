@@ -403,9 +403,9 @@ if __name__ == '__main__':
     parser.add_argument('--margin', type=float, default=0.1, help='margin of training model')
     parser.add_argument('--d', type=float, default=32, help='scale of training model')
     parser.add_argument('--n_att', type=float, default=10, help='top-D att')
-    parser.add_argument('--resnet_path', type=str, default='./results/resnet/model_ir_se50.pth',
+    parser.add_argument('--resnet_path', type=str, default='./pretrain/resnet/model_ir_se50.pth',
                         help='pretrain resnet model')
-    parser.add_argument('--basemodel_dir', type=str, default='./results/basemodel/spatial_model_lfwa',
+    parser.add_argument('--basemodel_dir', type=str, default='./results/basemodel/lfwa_spatial_model',
                         help='root dir of saving model')
     parser.add_argument('--cnn_model_dir', type=str, default='cnn_model', help='root dir of cnn model')
     parser.add_argument('--att_model_dir', type=str, default='att_model', help='root dir of attribute model')
