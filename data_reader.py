@@ -9,15 +9,8 @@ from sklearn.preprocessing import normalize
 
 class LFWA(Dataset):
     def __init__(self, opt, transform=None, setting='trainval'):
-        '''
+        
 
-        :param filename: txt file contains img names and labels
-        :param img_dir: root dir of img
-        :param resize_height: if none, not resize
-        :param resize_width:
-        :param repeat: the repeat number of all sample data, default is 1, when repeat==None, infinite loop
-
-        '''
         self.opt                       = opt
         self.split_file_dir            = opt.root_dir + '/' + opt.split_file_dir
         self.img_att_label_list        = self.read_file(setting)
@@ -160,15 +153,8 @@ class LFWA(Dataset):
 
 class CelebA(Dataset):
     def __init__(self, opt, transform=None, setting='trainval',tag=None,pg_tag='probe'):
-        '''
-
-        :param filename: txt file contains img names and labels
-        :param img_dir: root dir of img
-        :param resize_height: if none, not resize
-        :param resize_width:
-        :param repeat: the repeat number of all sample data, default is 1, when repeat==None, infinite loop
-
-        '''
+        
+        
         self.opt                       = opt
         self.probe_gallery_idx_dir = opt.root_dir + '/' + opt.pg_idx_dir
         self.img_att_label_list        = self.read_file(setting,tag=tag,pg_tag=pg_tag)
